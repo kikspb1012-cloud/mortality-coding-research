@@ -1,0 +1,36 @@
+name: Repository snapshot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 1 * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository with full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create repository snapshots
+        shell: bash
+        run: |
+          stamp="$(date -u +'%Y-%m-%d_%H-%M-%S')"
+          tar --exclude=.git --exclude='mortality-coding-research_*'             -czf "mortality-coding-research_files_${stamp}.tar.gz" .
+          git bundle create "mortality-coding-research_${stamp}.bundle" --all
+          echo "stamp=${stamp}" >> "$GITHUB_ENV"
+
+      - name: Upload snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mortality-coding-research-${{ env.stamp }}
+          path: |
+            mortality-coding-research_files_${{ env.stamp }}.tar.gz
+            mortality-coding-research_${{ env.stamp }}.bundle
+          retention-days: 90
+          if-no-files-found: error
